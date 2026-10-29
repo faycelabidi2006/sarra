@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- tail: curved arc from the body up and over, ending at the stinger -->
+    <path
+        android:pathData="M66,66 C78,62 86,50 82,38 C79,28 70,22 60,24"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+    <!-- stinger -->
+    <path
+        android:pathData="M60,24 L52,20 L58,32 Z"
+        android:fillColor="#FF000000" />
+    <!-- body segments -->
+    <path
+        android:pathData="M30,66 a18,11 0 1,0 36,0 a18,11 0 1,0 -36,0 Z"
+        android:fillColor="#FF000000" />
+    <!-- head -->
+    <path
+        android:pathData="M20,66 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z"
+        android:fillColor="#FF000000" />
+    <!-- left claw -->
+    <path
+        android:pathData="M18,58 L6,50 L10,62 L4,66 L16,68 Z"
+        android:fillColor="#FF000000" />
+    <!-- right claw -->
+    <path
+        android:pathData="M22,76 L12,86 L24,84 L26,92 L32,80 Z"
+        android:fillColor="#FF000000" />
+    <!-- legs -->
+    <path
+        android:pathData="M34,56 L26,44 M40,56 L36,42 M48,56 L48,42 M56,58 L60,46"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+</vector>

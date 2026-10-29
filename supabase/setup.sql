@@ -31,6 +31,15 @@ create table if not exists public.fm_members (
 create unique index if not exists fm_members_name_lower on public.fm_members (lower(name));
 alter table public.fm_members enable row level security;
 
+-- إغلاق جماعي للتطبيق: صف واحد ثابت (id=1). lock_at فارغ = لا يوجد إغلاق.
+-- يُعتبر التطبيق مغلقاً عندما يحين lock_at (أو يكون في الماضي)، ويُفتح بمسح lock_at.
+create table if not exists public.fm_app_lock (
+  id int primary key default 1 check (id = 1),
+  lock_at timestamptz
+);
+alter table public.fm_app_lock enable row level security;
+insert into public.fm_app_lock (id) values (1) on conflict (id) do nothing;
+
 -- ===== تحقق المالك (داخلي، لا يُستدعى من التطبيق) =====
 create or replace function public._fm_admin_ok(p_secret text)
 returns boolean language plpgsql security definer set search_path = public, extensions as $$
@@ -112,7 +121,33 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+-- ===== حالة الإغلاق الجماعي (عامة، بلا سر: يستدعيها كل جهاز عند الفتح وكل دقيقة) =====
+create or replace function public.fm_app_status()
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare r public.fm_app_lock;
+begin
+  select * into r from public.fm_app_lock where id = 1;
+  if not found then return jsonb_build_object('ok', true, 'locked', false, 'lock_at', 0); end if;
+  return jsonb_build_object(
+    'ok', true,
+    'locked', (r.lock_at is not null and r.lock_at <= now()),
+    'lock_at', coalesce((extract(epoch from r.lock_at) * 1000)::bigint, 0)
+  );
+end $$;
+
 -- ===== دوال المالك (تتطلب السر) =====
+
+-- يضبط موعد الإغلاق الجماعي. p_lock_at فارغ أو صفر = فتح فوري وإلغاء أي جدول.
+-- موعد في الماضي أو الآن = إغلاق فوري. موعد مستقبلي = إغلاق تلقائي عند حلوله.
+create or replace function public.fm_admin_set_lock(p_secret text, p_lock_at bigint)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if not public._fm_admin_ok(p_secret) then return jsonb_build_object('ok', false, 'code', 'denied'); end if;
+  update public.fm_app_lock set
+    lock_at = case when p_lock_at is null or p_lock_at <= 0 then null else to_timestamp(p_lock_at / 1000.0) end
+  where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
 create or replace function public.fm_admin_list(p_secret text)
 returns jsonb language plpgsql security definer set search_path = public, extensions as $$
 begin
@@ -202,8 +237,12 @@ revoke all on function public.fm_admin_extend(text, text, int) from public;
 revoke all on function public.fm_admin_disable(text, text, boolean) from public;
 revoke all on function public.fm_admin_delete(text, text) from public;
 revoke all on function public.fm_admin_reset_device(text, text) from public;
+revoke all on function public.fm_app_status() from public;
+revoke all on function public.fm_admin_set_lock(text, bigint) from public;
 
 grant execute on function public.fm_login(text, text, text) to anon;
+grant execute on function public.fm_app_status() to anon;
+grant execute on function public.fm_admin_set_lock(text, bigint) to anon;
 grant execute on function public.fm_check(text, text, text, text, boolean) to anon;
 grant execute on function public.fm_admin_list(text) to anon;
 grant execute on function public.fm_admin_add(text, text, text, int, text) to anon;
